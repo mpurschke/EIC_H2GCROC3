@@ -1,0 +1,274 @@
+#include "daq_device_h2gcroc3.h"
+
+
+#include <unistd.h>
+#include <string.h>
+
+#define PORT 11001
+
+#define NumberOfASIC  2
+#define ASIC_SELECT  3
+
+
+
+#define MAX_PACKETS 9
+
+using namespace std;
+
+daq_device_h2gcroc3::daq_device_h2gcroc3(const int eventtype
+			       , const int subeventid
+			       , const char *ipaddr
+			       , const int trigger)
+{
+
+  m_eventType  = eventtype;
+  m_subeventid = subeventid;
+  strcpy ( _ip, ipaddr);
+  _s = 0;
+  _th = 0;
+
+
+  _broken = 0;
+
+
+  if ((_s=socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP))==-1)
+    {
+      _broken =1;
+      cout << __LINE__ << "  " << __FILE__ << " broken 1" << endl;
+      perror("h2gcroc3");
+    }
+
+  memset((char *) &_si_me, 0, sizeof(_si_me));
+  _si_me.sin_family = AF_INET;
+  _si_me.sin_port = htons(PORT);
+  _si_me.sin_addr.s_addr = htonl(INADDR_ANY);
+  if (bind(_s, (sockaddr *)&_si_me, sizeof(_si_me))==-1)
+   {
+      _broken =1;
+      cout << __LINE__ << "  " << __FILE__ << " broken 1" << endl;
+      perror("bind");
+
+    }
+
+  FD_ZERO(&read_flag);
+  FD_SET(_s, &read_flag);
+
+
+  if ( trigger) 
+    {
+      //cout << __LINE__ << "  " << __FILE__ << " registering triggerhandler with fd " << _s << endl;
+      _th  = new h2gcroc3TriggerHandler ( &read_flag, _s, m_eventType);
+      registerTriggerHandler ( _th);
+    }
+
+}
+
+daq_device_h2gcroc3::~daq_device_h2gcroc3()
+{
+  if ( _th) 
+    {
+      clearTriggerHandler();
+      delete _th;
+      _th = 0;
+    }
+  close( _s );
+}
+
+
+
+// the put_data function
+
+int daq_device_h2gcroc3::put_data(const int etype, int * adr, const int length )
+{
+  //  cout << __LINE__ << "  " << __FILE__ << " etype= " << etype << " adr= " << adr << " length= " << length << endl;
+
+  if ( _broken ) 
+    {
+      cout << __LINE__ << "  " << __FILE__ << " broken ";
+      identify();
+      return 0; //  we had a catastrophic failure
+    }
+
+  int len = 0;
+
+  if (etype != m_eventType )  // not our id
+    {
+      return 0;
+    }
+
+  sevt =  (subevtdata_ptr) adr;
+  // set the initial subevent length
+  sevt->sub_length =  SEVTHEADERLENGTH;
+
+  // update id's etc
+  sevt->sub_id =  m_subeventid;
+  sevt->sub_type=4;
+  sevt->sub_decoding = 301;
+  sevt->reserved[0] = 0;
+  sevt->reserved[1] = 0;
+
+  if ( length < max_length(etype) ) 
+    {
+      cout << __LINE__ << "  " << __FILE__ << " length " << length <<endl;
+      return 0;
+    }
+
+  //  unsigned int data;
+
+  unsigned int *data = (unsigned int *) &sevt->data; 
+
+  struct timeval tv;
+
+  struct sockaddr_in si_src;
+  socklen_t src_len;
+  int ia;
+  int received_len; 
+
+
+
+  for ( ia = 0; ia < MAX_PACKETS; ia++)  //receive 
+    {
+
+      *data++ = 0xAABBCCDD;
+      unsigned int *xlen = data; // that's where the later length goes 
+      *data++ = 0;
+      
+      tv.tv_sec = 1;
+      tv.tv_usec = 0;
+      int retval = select(_s+1, &read_flag, NULL, NULL, &tv);
+      if ( retval > 0) 
+      	{
+	  char *d = (char *) data;
+
+	  src_len = sizeof (si_src);
+	  if ( ( received_len = recvfrom(_s, d, 8192, 0, (sockaddr *) &si_src, &src_len) ) ==-1)
+	    {
+	      perror ( "receive ");
+	      cout << __LINE__ << "  " << __FILE__ << " error " << received_len <<endl;
+	      return 0;
+	    }
+	  *xlen = received_len;
+	  cout << __FILE__ << " " << __LINE__ << " got " << received_len << " bytes xlen ptr = " << xlen << endl;
+	  
+	  len += received_len + 8 ;   // we are still counting bytes here, but we add the 2 words in bytes
+	  d+= received_len;     // and here - update the write pointer
+	  data = (unsigned int *) d; // and update the data pointer
+	}
+      else
+	{
+	  cout << __LINE__ << "  " << __FILE__ << " " << retval << " timeout in ";
+	  identify();
+	  break;
+	}
+
+    }
+
+  len /= 4;  // now we have ints
+  
+  sevt->sub_padding = len%2;
+  len = len + (len%2);
+  sevt->sub_length += len;
+  //cout << __LINE__ << "  " << __FILE__ << " returning "  << sevt->sub_length << endl;
+  return  sevt->sub_length;
+  
+}
+
+
+void daq_device_h2gcroc3::identify(std::ostream& os) const
+{
+  
+  os  << "H2GCROC3 Device  Event Type: " << m_eventType << " Subevent id: " << m_subeventid 
+      << " IP: " << _ip;
+  if ( _th) os << " trigger ";
+  if ( _broken) os << " ** not functional ** ";
+  os << endl;
+
+}
+
+int daq_device_h2gcroc3::max_length(const int etype) const
+{
+  if (etype != m_eventType) return 0;
+  return  (MAX_PACKETS*1500 + SEVTHEADERLENGTH);
+}
+
+int  daq_device_h2gcroc3::init()
+{
+
+
+  // struct sockaddr_in _server;
+  // int _sockfd;
+  // in_addr _rocip;
+
+  // if (inet_aton(_ip, &_rocip)==0)
+  //   {
+  //     cerr << "invalid IP address " << _ip << endl;
+  //     return 1;
+  //   }
+
+  // socklen_t slen=sizeof(_server);
+
+  // if ( ( _sockfd=socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP) ) ==-1)
+  //   {
+  //     perror("socket " );
+  //     return -1;
+  //   }
+
+  // memset ( (char *) &_server, 0, slen);
+  // _server.sin_family  = AF_INET;
+  // _server.sin_addr = _rocip;
+  // _server.sin_port = htons(PORT);
+
+   
+  // unsigned char DAQ_SetGenerator[] ={0xa0,0x00,0x07,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00};
+
+  // DAQ_SetGenerator[3]  = ASIC_SELECT;             // Data Collect Enable For All ASIC                                                               
+  // DAQ_SetGenerator[4]  = 0;                       // Trigger Data Collect Disable For All ASIC                                                      
+  // DAQ_SetGenerator[7]  = 75;                      // DAQ           FCMD: CMDL1A - 0b01001011                                                        
+  // DAQ_SetGenerator[8]  = 45;                   // Generator Pre FCMD: CMDL1A - 0b01001011                                                        
+  // DAQ_SetGenerator[9]  = 75;                      // Generator     FCMD: CMDL1A - 0b01001011                                                        
+  // DAQ_SetGenerator[13] = 1;                       // Generator PrePulse: 0 - Disable                                                                
+
+  // DAQ_SetGenerator[14] = 0;                       // Generator PreInterval 15:8                                                                     
+  // DAQ_SetGenerator[15] = 16;                      // Generator PreInterval  7:0                                                                     
+
+  // DAQ_SetGenerator[16] = 0;                       // Generator Nr. Of Cycle 31:24                                                                   
+  // DAQ_SetGenerator[17] = 0;                       // Generator Nr. Of Cycle 23:16                                                                   
+  // DAQ_SetGenerator[18] = 0;                       // Generator Nr. Of Cycle 15:8                                                                    
+  // DAQ_SetGenerator[19] = 1;                     // Generator Nr. Of Cycle  7:0                                                                      
+
+  // DAQ_SetGenerator[20] = 0;                       // Generator Interval 31:24                                                                       
+  // DAQ_SetGenerator[21] = 1;                       // Generator Interval 23:16                                                                       
+  // DAQ_SetGenerator[22] = 134;                     // Generator Interval 15:8                                                                        
+  // DAQ_SetGenerator[23] = 160;                     // Generator Interval  7:0                                                                        
+
+  // DAQ_SetGenerator[24]  = 75;                     // DAQ PUSH      FCMD: CMDL1A - 0b01001011                                                        
+  // DAQ_SetGenerator[25]  = 9;                     // Machine gun settings                                                                            
+
+  // for (int i = 0; i < NumberOfASIC; i++)
+  //   {
+  //     DAQ_SetGenerator[0] = 160+i;
+  //     if (sendto(_sockfd, DAQ_SetGenerator, 26 , 0, (sockaddr *) &_server, slen)==-1)
+  // 	{
+  // 	  perror("sendto  " );
+  // 	  return -2;
+  // 	}
+  //   }
+
+  // close (_sockfd);
+  
+  return 0;
+
+}
+int  daq_device_h2gcroc3::endrun()
+{
+  return 0;
+}
+
+// the rearm() function
+int  daq_device_h2gcroc3::rearm(const int etype)
+{
+  if (etype != m_eventType) return 0;
+  return 0;
+}
+
+
