@@ -40,6 +40,19 @@ int h2gcroc3_plugin::create_device(deviceblock *db)
 	  return 0;  // say "we handled this request" 
 	}  
 
+      else if ( db->npar ==6 ) 
+	{
+	  daq_device *x = new daq_device_h2gcroc3( eventtype,
+						   subid,
+						   db->argv3,
+						   atoi (db->argv4),
+						   atoi (db->argv5));
+	  //      x->identify();
+	  
+	  add_readoutdevice (x);
+	  return 0;  // say "we handled this request" 
+	}  
+
 
     }
   
@@ -56,7 +69,7 @@ void h2gcroc3_plugin::identify(std::ostream& os, const int flag) const
   else
     {
       os << " - H2GCROC3 Plugin, provides - " << std::endl;
-      os << " -     device_h2gcroc3 (evttype, subid, IP addr) - readout an H2GCROC3 " << std::endl;
+      os << " -     device_h2gcroc3 (evttype, subid, IP addr, trigger, nr_packets) - readout an H2GCROC3 " << std::endl;
 
     }
       

@@ -16,7 +16,8 @@ public:
   daq_device_h2gcroc3 (const int eventtype
 		  , const int subeventid
 		  , const char *ipaddr
-		  , const int trigger =1);
+		  , const int trigger =1
+		  , const int nr_packets=20);
 
   ~daq_device_h2gcroc3();
 
@@ -42,6 +43,7 @@ protected:
   int _s;
   struct sockaddr_in _si_me;
   int _broken;
+  int _nr_packets;
 
   h2gcroc3TriggerHandler *_th;
   fd_set read_flag;

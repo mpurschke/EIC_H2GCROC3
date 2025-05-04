@@ -18,7 +18,8 @@ using namespace std;
 daq_device_h2gcroc3::daq_device_h2gcroc3(const int eventtype
 			       , const int subeventid
 			       , const char *ipaddr
-			       , const int trigger)
+			       , const int trigger
+			       , const int nr_packets)
 {
 
   m_eventType  = eventtype;
@@ -29,7 +30,7 @@ daq_device_h2gcroc3::daq_device_h2gcroc3(const int eventtype
 
 
   _broken = 0;
-
+  _nr_packets = nr_packets;
 
   if ((_s=socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP))==-1)
     {
@@ -126,7 +127,7 @@ int daq_device_h2gcroc3::put_data(const int etype, int * adr, const int length )
 
 
 
-  for ( ia = 0; ia < MAX_PACKETS; ia++)  //receive 
+  for ( ia = 0; ia < _nr_packets; ia++)  //receive 
     {
 
       *data++ = 0xAABBCCDD;
@@ -179,6 +180,7 @@ void daq_device_h2gcroc3::identify(std::ostream& os) const
   
   os  << "H2GCROC3 Device  Event Type: " << m_eventType << " Subevent id: " << m_subeventid 
       << " IP: " << _ip;
+  os << " nr_packets: " << _nr_packets;
   if ( _th) os << " trigger ";
   if ( _broken) os << " ** not functional ** ";
   os << endl;
