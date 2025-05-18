@@ -36,6 +36,9 @@ public:
   int rearm( const int etype);
 
 protected:
+
+  int sendData(const unsigned char *data, const long unsigned int len);
+  
   subevtdata_ptr sevt;
   unsigned int number_of_words;
 
@@ -45,6 +48,13 @@ protected:
   int _broken;
   int _nr_packets;
 
+  struct sockaddr_in _server;
+  int _sockfd;
+  in_addr _rocip;
+
+  socklen_t _slen;
+
+  
   h2gcroc3TriggerHandler *_th;
   fd_set read_flag;
 

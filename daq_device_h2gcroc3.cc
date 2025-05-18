@@ -4,6 +4,7 @@
 #include <unistd.h>
 #include <string.h>
 
+#define CONTROLPORT 11000
 #define PORT 11001
 
 #define NumberOfASIC  2
@@ -26,6 +27,7 @@ daq_device_h2gcroc3::daq_device_h2gcroc3(const int eventtype
   m_subeventid = subeventid;
   strcpy ( _ip, ipaddr);
   _s = 0;
+  _sockfd = 0;
   _th = 0;
 
 
@@ -196,73 +198,47 @@ int daq_device_h2gcroc3::max_length(const int etype) const
 int  daq_device_h2gcroc3::init()
 {
 
+  if (! _sockfd)
+    {
+      if (inet_aton(_ip, &_rocip)==0)
+	{
+	  cerr << "invalid IP address " << _ip << endl;
+	  return 1;
+	}
+      
+      
+      if ( ( _sockfd=socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP) ) ==-1)
+	{
+	  perror("socket " );
+	  return -2;
+	}
+      
+      _slen=sizeof(_server);
+      memset ( (char *) &_server, 0, _slen);
+      _server.sin_family  = AF_INET;
+      _server.sin_addr = _rocip;
+      _server.sin_port = htons(CONTROLPORT);
+    }
 
-  // struct sockaddr_in _server;
-  // int _sockfd;
-  // in_addr _rocip;
-
-  // if (inet_aton(_ip, &_rocip)==0)
-  //   {
-  //     cerr << "invalid IP address " << _ip << endl;
-  //     return 1;
-  //   }
-
-  // socklen_t slen=sizeof(_server);
-
-  // if ( ( _sockfd=socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP) ) ==-1)
-  //   {
-  //     perror("socket " );
-  //     return -1;
-  //   }
-
-  // memset ( (char *) &_server, 0, slen);
-  // _server.sin_family  = AF_INET;
-  // _server.sin_addr = _rocip;
-  // _server.sin_port = htons(PORT);
-
-   
-  // unsigned char DAQ_SetGenerator[] ={0xa0,0x00,0x07,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00};
-
-  // DAQ_SetGenerator[3]  = ASIC_SELECT;             // Data Collect Enable For All ASIC                                                               
-  // DAQ_SetGenerator[4]  = 0;                       // Trigger Data Collect Disable For All ASIC                                                      
-  // DAQ_SetGenerator[7]  = 75;                      // DAQ           FCMD: CMDL1A - 0b01001011                                                        
-  // DAQ_SetGenerator[8]  = 45;                   // Generator Pre FCMD: CMDL1A - 0b01001011                                                        
-  // DAQ_SetGenerator[9]  = 75;                      // Generator     FCMD: CMDL1A - 0b01001011                                                        
-  // DAQ_SetGenerator[13] = 1;                       // Generator PrePulse: 0 - Disable                                                                
-
-  // DAQ_SetGenerator[14] = 0;                       // Generator PreInterval 15:8                                                                     
-  // DAQ_SetGenerator[15] = 16;                      // Generator PreInterval  7:0                                                                     
-
-  // DAQ_SetGenerator[16] = 0;                       // Generator Nr. Of Cycle 31:24                                                                   
-  // DAQ_SetGenerator[17] = 0;                       // Generator Nr. Of Cycle 23:16                                                                   
-  // DAQ_SetGenerator[18] = 0;                       // Generator Nr. Of Cycle 15:8                                                                    
-  // DAQ_SetGenerator[19] = 1;                     // Generator Nr. Of Cycle  7:0                                                                      
-
-  // DAQ_SetGenerator[20] = 0;                       // Generator Interval 31:24                                                                       
-  // DAQ_SetGenerator[21] = 1;                       // Generator Interval 23:16                                                                       
-  // DAQ_SetGenerator[22] = 134;                     // Generator Interval 15:8                                                                        
-  // DAQ_SetGenerator[23] = 160;                     // Generator Interval  7:0                                                                        
-
-  // DAQ_SetGenerator[24]  = 75;                     // DAQ PUSH      FCMD: CMDL1A - 0b01001011                                                        
-  // DAQ_SetGenerator[25]  = 9;                     // Machine gun settings                                                                            
-
-  // for (int i = 0; i < NumberOfASIC; i++)
-  //   {
-  //     DAQ_SetGenerator[0] = 160+i;
-  //     if (sendto(_sockfd, DAQ_SetGenerator, 26 , 0, (sockaddr *) &_server, slen)==-1)
-  // 	{
-  // 	  perror("sendto  " );
-  // 	  return -2;
-  // 	}
-  //   }
-
-  // close (_sockfd);
+  unsigned char Start[]   ={0xa0,0x00,0x09,0x00,0x00,0x00,0xff,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00};
   
-  return 0;
+  return sendData( Start, sizeof(Start));
+
+
 
 }
 int  daq_device_h2gcroc3::endrun()
 {
+  int ret=0;
+  
+  unsigned char Stop[]   ={0xa0,0x00,0x09,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00};
+
+  ret =  sendData( Stop, sizeof(Stop));
+
+  close (_sockfd);
+  _sockfd = 0;
+
+  
   return 0;
 }
 
@@ -270,6 +246,16 @@ int  daq_device_h2gcroc3::endrun()
 int  daq_device_h2gcroc3::rearm(const int etype)
 {
   if (etype != m_eventType) return 0;
+  return 0;
+}
+
+int  daq_device_h2gcroc3::sendData(const unsigned char *data, const long unsigned int len)
+{
+  if (sendto(_sockfd, data, len , 0, (sockaddr *) &_server, _slen) == -1 )
+	{
+	  perror("sendto  " );
+	  return -2;
+	}
   return 0;
 }
 
