@@ -151,7 +151,7 @@ int daq_device_h2gcroc3::put_data(const int etype, int * adr, const int length )
 	      return 0;
 	    }
 	  *xlen = received_len;
-	  cout << __FILE__ << " " << __LINE__ << " got " << received_len << " bytes xlen ptr = " << xlen << endl;
+	  //cout << __FILE__ << " " << __LINE__ << " got " << received_len << " bytes xlen ptr = " << xlen << endl;
 	  
 	  len += received_len + 8 ;   // we are still counting bytes here, but we add the 2 words in bytes
 	  d+= received_len;     // and here - update the write pointer
