@@ -161,6 +161,7 @@ int daq_device_h2gcroc3::put_data(const int etype, int * adr, const int length )
 	{
 	  cout << __LINE__ << "  " << __FILE__ << " " << retval << " timeout in ";
 	  identify();
+	  break;
 	}
 
     }
