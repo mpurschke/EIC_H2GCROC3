@@ -129,10 +129,10 @@ int daq_device_h2gcroc3::put_data(const int etype, int * adr, const int length )
 
 
 
-  for ( ia = 0; ia < _nr_packets; )  //receive 
+  for ( ia = 0; ia < _nr_packets; ia++)  //receive 
     {
 
-      tv.tv_sec = 10;
+      tv.tv_sec = 1;
       tv.tv_usec = 0;
       int retval = select(_s+1, &read_flag, NULL, NULL, &tv);
       if ( retval > 0) 
@@ -156,7 +156,6 @@ int daq_device_h2gcroc3::put_data(const int etype, int * adr, const int length )
 	  len += received_len + 8 ;   // we are still counting bytes here, but we add the 2 words in bytes
 	  d+= received_len;     // and here - update the write pointer
 	  data = (unsigned int *) d; // and update the data pointer
-	  ia++;
 	}
       else
 	{
