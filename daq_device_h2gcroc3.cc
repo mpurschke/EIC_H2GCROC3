@@ -129,18 +129,18 @@ int daq_device_h2gcroc3::put_data(const int etype, int * adr, const int length )
 
 
 
-  for ( ia = 0; ia < _nr_packets; ia++)  //receive 
+  for ( ia = 0; ia < _nr_packets; )  //receive 
     {
 
-      *data++ = 0xAABBCCDD;
-      unsigned int *xlen = data; // that's where the later length goes 
-      *data++ = 0;
-      
-      tv.tv_sec = 1;
+      tv.tv_sec = 10;
       tv.tv_usec = 0;
       int retval = select(_s+1, &read_flag, NULL, NULL, &tv);
       if ( retval > 0) 
       	{
+	  *data++ = 0xAABBCCDD;
+	  unsigned int *xlen = data; // that's where the later length goes 
+	  *data++ = 0;
+      
 	  char *d = (char *) data;
 
 	  src_len = sizeof (si_src);
@@ -156,12 +156,12 @@ int daq_device_h2gcroc3::put_data(const int etype, int * adr, const int length )
 	  len += received_len + 8 ;   // we are still counting bytes here, but we add the 2 words in bytes
 	  d+= received_len;     // and here - update the write pointer
 	  data = (unsigned int *) d; // and update the data pointer
+	  ia++;
 	}
       else
 	{
 	  cout << __LINE__ << "  " << __FILE__ << " " << retval << " timeout in ";
 	  identify();
-	  break;
 	}
 
     }
