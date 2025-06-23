@@ -15,13 +15,13 @@ INCLUDES = -I$(includedir) -I$(ONLINE_MAIN)/include
 #bin_PROGRAMS = udp_to_GL1
 #udp_to_GL1_SOURCES = udp_to_GL1.cc
 
-lib_LTLIBRARIES =  librcdaqplugin_h2gcro3.la 
+lib_LTLIBRARIES =  librcdaqplugin_h2gcroc3.la 
 
-librcdaqplugin_h2gcro3_la_SOURCES = \
+librcdaqplugin_h2gcroc3_la_SOURCES = \
 	daq_device_h2gcroc3.cc  h2gcroc3_plugin.cc  h2gcroc3TriggerHandler.cc
 
 
-librcdaqplugin_h2gcro3_la_LIBADD = -lrcdaqutils $(RPC_LDD)
+librcdaqplugin_h2gcroc3_la_LIBADD = -lrcdaqutils $(RPC_LDD)
 
 
 
