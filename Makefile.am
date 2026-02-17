@@ -18,7 +18,7 @@ INCLUDES = -I$(includedir) -I$(ONLINE_MAIN)/include
 lib_LTLIBRARIES =  librcdaqplugin_h2gcroc3.la 
 
 librcdaqplugin_h2gcroc3_la_SOURCES = \
-	daq_device_h2gcroc3.cc  h2gcroc3_plugin.cc  h2gcroc3TriggerHandler.cc
+	daq_device_h2gcroc3.cc daq_device_h2gcroc3_10G.cc  h2gcroc3_plugin.cc  h2gcroc3TriggerHandler.cc
 
 
 librcdaqplugin_h2gcroc3_la_LIBADD = -lrcdaqutils $(RPC_LDD)

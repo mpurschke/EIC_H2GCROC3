@@ -64,6 +64,8 @@ daq_device_h2gcroc3::daq_device_h2gcroc3(const int eventtype
       registerTriggerHandler ( _th);
     }
 
+  _hitformat = 301;
+
 }
 
 daq_device_h2gcroc3::~daq_device_h2gcroc3()
@@ -106,13 +108,13 @@ int daq_device_h2gcroc3::put_data(const int etype, int * adr, const int length )
   // update id's etc
   sevt->sub_id =  m_subeventid;
   sevt->sub_type=4;
-  sevt->sub_decoding = 301;
+  sevt->sub_decoding = _hitformat; //301;
   sevt->reserved[0] = 0;
   sevt->reserved[1] = 0;
 
-  if ( length < max_length(etype) ) 
+  if ( length > max_length(etype) ) 
     {
-      cout << __LINE__ << "  " << __FILE__ << " length " << length <<endl;
+      cout << __LINE__ << "  " << __FILE__ << " length exceeds limit " << length <<  " limit is " << max_length(etype) << endl;
       return 0;
     }
 
@@ -159,8 +161,8 @@ int daq_device_h2gcroc3::put_data(const int etype, int * adr, const int length )
 	}
       else
 	{
-	  cout << __LINE__ << "  " << __FILE__ << " " << retval << " timeout in ";
-	  identify();
+	  //cout << __LINE__ << "  " << __FILE__ << " " << retval << " timeout in ";
+	  //identify();
 	  break;
 	}
 
