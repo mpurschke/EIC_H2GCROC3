@@ -194,7 +194,7 @@ void daq_device_h2gcroc3::identify(std::ostream& os) const
 int daq_device_h2gcroc3::max_length(const int etype) const
 {
   if (etype != m_eventType) return 0;
-  return  (MAX_PACKETS*1500 + SEVTHEADERLENGTH);
+  return  (_nr_packets*1500 + SEVTHEADERLENGTH);
 }
 
 int  daq_device_h2gcroc3::init()
