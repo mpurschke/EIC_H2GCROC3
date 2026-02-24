@@ -112,7 +112,7 @@ int daq_device_h2gcroc3::put_data(const int etype, int * adr, const int length )
   sevt->reserved[0] = 0;
   sevt->reserved[1] = 0;
 
-  if ( length > max_length(etype) ) 
+  if ( length <  max_length(etype) ) 
     {
       cout << __LINE__ << "  " << __FILE__ << " length exceeds limit " << length <<  " limit is " << max_length(etype) << endl;
       return 0;
