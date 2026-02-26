@@ -10,10 +10,7 @@ AM_CPPFLAGS = -O2 -g -I$(includedir) -I$(ONLINE_MAIN)/include $(RPC_INCLUDE)
 
 INCLUDES = -I$(includedir) -I$(ONLINE_MAIN)/include 
 
-#bin_SCRIPTS = getSpinPattern.py getBuckets.py getFillNumber.py getPolarimeter.py
-
-#bin_PROGRAMS = udp_to_GL1
-#udp_to_GL1_SOURCES = udp_to_GL1.cc
+bin_SCRIPTS = RequestScript.py
 
 lib_LTLIBRARIES =  librcdaqplugin_h2gcroc3.la 
 
