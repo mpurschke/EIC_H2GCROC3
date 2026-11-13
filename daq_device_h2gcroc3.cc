@@ -5,7 +5,8 @@
 #include <string.h>
 
 #define CONTROLPORT 11000
-#define PORT 11001
+//#define PORT 11001
+#define PORT 50100
 
 #define NumberOfASIC  2
 #define ASIC_SELECT  3
@@ -29,7 +30,7 @@ daq_device_h2gcroc3::daq_device_h2gcroc3(const int eventtype
   _s = 0;
   _sockfd = 0;
   _th = 0;
-
+  _my_port = PORT;
 
   _broken = 0;
   _nr_packets = nr_packets;
@@ -43,7 +44,7 @@ daq_device_h2gcroc3::daq_device_h2gcroc3(const int eventtype
 
   memset((char *) &_si_me, 0, sizeof(_si_me));
   _si_me.sin_family = AF_INET;
-  _si_me.sin_port = htons(PORT);
+  _si_me.sin_port = htons(_my_port);
   _si_me.sin_addr.s_addr = htonl(INADDR_ANY);
   if (bind(_s, (sockaddr *)&_si_me, sizeof(_si_me))==-1)
    {
@@ -144,6 +145,7 @@ int daq_device_h2gcroc3::put_data(const int etype, int * adr, const int length )
 	  *data++ = 0;
       
 	  char *d = (char *) data;
+	  unsigned short *us = (unsigned short *) data;
 
 	  src_len = sizeof (si_src);
 	  if ( ( received_len = recvfrom(_s, d, 8192, 0, (sockaddr *) &si_src, &src_len) ) ==-1)
@@ -153,7 +155,11 @@ int daq_device_h2gcroc3::put_data(const int etype, int * adr, const int length )
 	      return 0;
 	    }
 	  *xlen = received_len;
-	  //cout << __FILE__ << " " << __LINE__ << " got " << received_len << " bytes xlen ptr = " << xlen << endl;
+
+
+	  cout << __FILE__ << " " << __LINE__ << " got " << received_len << " bytes xlen ptr = " << xlen << endl;
+	  for ( int i = 0; i < 8; i++) cout << hex << us[i] << " ";
+	  cout << dec <<  endl;
 	  
 	  len += received_len + 8 ;   // we are still counting bytes here, but we add the 2 words in bytes
 	  d+= received_len;     // and here - update the write pointer
@@ -173,7 +179,7 @@ int daq_device_h2gcroc3::put_data(const int etype, int * adr, const int length )
   sevt->sub_padding = len%2;
   len = len + (len%2);
   sevt->sub_length += len;
-  //cout << __LINE__ << "  " << __FILE__ << " returning "  << sevt->sub_length << endl;
+  cout << __LINE__ << "  " << __FILE__ << " returning "  << sevt->sub_length << endl;
   return  sevt->sub_length;
   
 }

@@ -40,6 +40,7 @@ protected:
   int sendData(const unsigned char *data, const long unsigned int len);
 
   int _hitformat;
+  int _my_port;
   
   subevtdata_ptr sevt;
   unsigned int number_of_words;
