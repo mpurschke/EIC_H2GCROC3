@@ -15,6 +15,10 @@
 
 #define MAX_PACKETS 9
 
+// UDP receive buffer we ask for, and the least we accept
+#define RCVBUFSIZE    (16*1024*1024)
+#define MINRCVBUFSIZE (8*1024*1024)
+
 using namespace std;
 
 daq_device_h2gcroc3::daq_device_h2gcroc3(const int eventtype
@@ -52,6 +56,26 @@ daq_device_h2gcroc3::daq_device_h2gcroc3(const int eventtype
       cout << __LINE__ << "  " << __FILE__ << " broken 1" << endl;
       perror("bind");
 
+    }
+
+  // the board sends its data in bursts; with the system's default
+  // receive buffer (a few hundred kB) the kernel drops datagrams.
+  // We ask for RCVBUFSIZE, which the kernel caps at net.core.rmem_max,
+  // and refuse to run with less than MINRCVBUFSIZE.
+  int rcvbuf = RCVBUFSIZE;
+  setsockopt(_s, SOL_SOCKET, SO_RCVBUF, &rcvbuf, sizeof(rcvbuf));
+
+  int granted = 0;
+  socklen_t optlen = sizeof(granted);
+  getsockopt(_s, SOL_SOCKET, SO_RCVBUF, &granted, &optlen);
+  granted /= 2;  // Linux reports twice the size (it adds room for its own bookkeeping)
+
+  if ( granted < MINRCVBUFSIZE)
+    {
+      _broken =1;
+      cout << __LINE__ << "  " << __FILE__ << " receive buffer is only " << granted
+	   << " bytes, need at least " << MINRCVBUFSIZE
+	   << " - raise net.core.rmem_max (e.g. sysctl -w net.core.rmem_max=" << RCVBUFSIZE << ")" << endl;
     }
 
   FD_ZERO(&read_flag);
@@ -145,7 +169,6 @@ int daq_device_h2gcroc3::put_data(const int etype, int * adr, const int length )
 	  *data++ = 0;
       
 	  char *d = (char *) data;
-	  unsigned short *us = (unsigned short *) data;
 
 	  src_len = sizeof (si_src);
 	  if ( ( received_len = recvfrom(_s, d, 8192, 0, (sockaddr *) &si_src, &src_len) ) ==-1)
@@ -156,11 +179,6 @@ int daq_device_h2gcroc3::put_data(const int etype, int * adr, const int length )
 	    }
 	  *xlen = received_len;
 
-
-	  cout << __FILE__ << " " << __LINE__ << " got " << received_len << " bytes xlen ptr = " << xlen << endl;
-	  for ( int i = 0; i < 8; i++) cout << hex << us[i] << " ";
-	  cout << dec <<  endl;
-	  
 	  len += received_len + 8 ;   // we are still counting bytes here, but we add the 2 words in bytes
 	  d+= received_len;     // and here - update the write pointer
 	  data = (unsigned int *) d; // and update the data pointer
